@@ -1,0 +1,11 @@
+name: Referrals
+version: @version@
+main: com.me4502.referrals.spigot.ReferralsSpigot
+authors: [Me4502]
+description: Referrals plugin for Spigot
+commands:
+   referral:
+      description: Base referrals command.
+      usage: /<command> [player|website|list|reload]
+      permission: referral.referral
+      permission-message: You don't have <permission>
