@@ -1,0 +1,14 @@
+plugins {
+    id 'org.spongepowered.plugin' version '0.8.1'
+}
+
+dependencies {
+    compile project(':referrals-common')
+    compile 'org.spongepowered:spongeapi:5.1.0-SNAPSHOT'
+}
+
+processResources {
+    from('src/main/resources') {
+        expand 'version': project.version
+    }
+}

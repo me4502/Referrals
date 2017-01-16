@@ -1,0 +1,3 @@
+rootProject.name = 'referrals'
+
+include 'referrals-common', 'referrals-spigot', 'referrals-sponge'
