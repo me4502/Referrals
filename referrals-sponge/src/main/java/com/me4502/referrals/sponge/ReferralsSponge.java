@@ -81,13 +81,18 @@ public class ReferralsSponge implements Referrals {
                     }
 
                     if (getDatabaseManager().hasAlreadyReferred(((Player) src).getUniqueId())) {
-                        src.sendMessage(Text.of("You have already been referred!"));
+                        src.sendMessage(Text.of(TextColors.RED, "You have already selected who referred you, you can't do it again!"));
                         return CommandResult.empty();
                     }
 
                     User source = args.<User>getOne("source").orElse(null);
                     if (source == null) {
-                        src.sendMessage(Text.of("A player must be provided!"));
+                        src.sendMessage(Text.of(TextColors.RED, "Player not found. Try again."));
+                        return CommandResult.empty();
+                    }
+
+                    if (source.getUniqueId().equals(((Player) src).getUniqueId())) {
+                        src.sendMessage(Text.of(TextColors.RED, "You can't refer yourself, you silly goose!"));
                         return CommandResult.empty();
                     }
 
@@ -101,10 +106,12 @@ public class ReferralsSponge implements Referrals {
                         for (String command : sourceRewards) {
                             Sponge.getCommandManager().process(Sponge.getServer().getConsole(), command.replace("@p", source.getName()));
                         }
-                        source.getPlayer().get().sendMessage(Text.of("You've been rewarded for referring " + src.getName()));
+                        source.getPlayer().get().sendMessage(Text.of(TextColors.GREEN, "Thanks for referring " + src.getName() + " to the server!"));
                         rewarded = true;
                     }
 
+                    src.sendMessage(Text.of(TextColors.GREEN, "You were referred by " + source.getName() + ". Want some awesome rewards? Get a "
+                            + "player to join and have them do ", TextColors.YELLOW, "/refer player <playername>"));
                     getDatabaseManager().addPlayerReferral(((Player) src).getUniqueId(), source.getUniqueId(), rewarded);
                     return CommandResult.success();
                 })
@@ -119,15 +126,19 @@ public class ReferralsSponge implements Referrals {
                     }
 
                     if (getDatabaseManager().hasAlreadyReferred(((Player) src).getUniqueId())) {
-                        src.sendMessage(Text.of("You have already been referred!"));
+                        src.sendMessage(Text.of(TextColors.RED, "You have already selected who referred you, you can't do it again!"));
                         return CommandResult.empty();
                     }
+
+                    String source = args.<String>getOne("source").orElse(null);
 
                     for (String command : playerRewards) {
                         Sponge.getCommandManager().process(Sponge.getServer().getConsole(), command.replace("@p", src.getName()));
                     }
 
-                    getDatabaseManager().addWebsiteReferral(((Player) src).getUniqueId(), args.<String>getOne("source").orElse(null));
+                    src.sendMessage(Text.of(TextColors.GREEN, "You were referred by " + source + ". Want some awesome rewards? Get a player to join "
+                            + "and have them do ", TextColors.YELLOW, "/refer player <playername>"));
+                    getDatabaseManager().addWebsiteReferral(((Player) src).getUniqueId(), source);
                     return CommandResult.success();
                 })
                 .build();
@@ -141,7 +152,7 @@ public class ReferralsSponge implements Referrals {
                     if (src instanceof Player) {
                         lookupUser = ((Player) src);
                     }
-                    if (args.hasAny("user") && src.hasPermission("referrals.list.other")) {
+                    if (args.hasAny("user") && src.hasPermission("refer.listother")) {
                         lookupUser = args.<User>getOne("user").get();
                     }
                     if (lookupUser == null) {
@@ -151,8 +162,9 @@ public class ReferralsSponge implements Referrals {
 
                     PaginationList.Builder pagination = paginationService.builder();
                     pagination.title(Text.of(TextColors.YELLOW, "Referrals"));
+                    pagination.header(Text.of("User: " + lookupUser.getName()));
                     pagination.padding(Text.of("="));
-                    pagination.contents(getDatabaseManager().getPlayersReferred(lookupUser.getUniqueId()).entrySet().stream().map(entry -> Text.of(userStorageService.get(entry.getKey()) + " was referred at " + DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm:ss").format(entry.getValue().toInstant()))).collect(Collectors.toList()));
+                    pagination.contents(getDatabaseManager().getPlayersReferred(lookupUser.getUniqueId()).entrySet().stream().map(entry -> Text.of(userStorageService.get(entry.getKey()).get().getName() + " was referred at " + DateTimeFormatter.ofPattern("dd-MM-yyyy hh:mm:ss a").format(entry.getValue().toLocalDateTime()))).collect(Collectors.toList()));
                     pagination.sendTo(src);
 
                     return CommandResult.success();
@@ -169,14 +181,16 @@ public class ReferralsSponge implements Referrals {
                         lookupUser = args.<User>getOne("user").get();
                     }
                     if (lookupUser == null) {
+                        src.sendMessage(Text.of(TextColors.GREEN, "Deleted all referral information."));
                         getDatabaseManager().clearAll();
                     } else {
+                        src.sendMessage(Text.of(TextColors.GREEN, "Deleted referral information for player " + lookupUser.getName() + "."));
                         getDatabaseManager().clearAll(lookupUser.getUniqueId());
                     }
 
                     return CommandResult.success();
                 })
-                .permission("referral.delete")
+                .permission("refer.delete")
                 .build();
 
         CommandSpec referralCommand = CommandSpec.builder()
@@ -184,6 +198,14 @@ public class ReferralsSponge implements Referrals {
                 .child(genericReferralCommand, "website")
                 .child(listReferralCommand, "list")
                 .child(deleteCommand, "delete")
+                .executor((src, args) -> {
+                    src.sendMessage(Text.of(TextColors.GREEN, "===", TextColors.YELLOW, "Refer", TextColors.GREEN, "==="));
+                    src.sendMessage(Text.of(TextColors.GREEN, "Help the server (and maybe others) out, and get rewarded yourself!"));
+                    src.sendMessage(Text.of(TextColors.GREEN, "How’d you get here? By player, by server list, or by website and state which."));
+                    src.sendMessage(Text.of(TextColors.GREEN, "/refer player/list/website <playername/serverlist/website>"));
+                    src.sendMessage(Text.of(TextColors.GREEN, "If you haven't already, you can have others refer you for bringing them here."));
+                    return CommandResult.success();
+                })
                 .build();
 
         Sponge.getCommandManager().register(this, referralCommand, "referral", "refer");
@@ -236,7 +258,8 @@ public class ReferralsSponge implements Referrals {
             for (String command : sourceRewards) {
                 Sponge.getCommandManager().process(Sponge.getServer().getConsole(), command.replace("@p", event.getTargetEntity().getName()));
             }
-            event.getTargetEntity().getPlayer().get().sendMessage(Text.of("You've been rewarded for referring " + user.getName()));
+            event.getTargetEntity().getPlayer().get().sendMessage(Text.of(TextColors.GREEN, "Thanks for referring " + user.getName() + " to the "
+                    + "server!"));
         }
     }
 

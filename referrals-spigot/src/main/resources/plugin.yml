@@ -6,6 +6,6 @@ description: Referrals plugin for Spigot
 commands:
    referral:
       description: Base referrals command.
-      usage: /<command> [player|website|list|reload]
+      usage: /<command> [player|website|list|delete|reload] <source>
       permission: referral.referral
       permission-message: You don't have <permission>
