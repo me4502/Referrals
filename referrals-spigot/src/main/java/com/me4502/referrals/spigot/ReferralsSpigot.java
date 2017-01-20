@@ -69,12 +69,13 @@ public final class ReferralsSpigot extends JavaPlugin implements Referrals, List
                     case "reload": {
                         databaseManager.disconnect();
                         loadConfig();
+                        sender.sendMessage(ChatColor.GREEN + "Refer configs have been reloaded.");
                         return true;
                     }
                     case "list": {
                         OfflinePlayer lookupUser = null;
                         if (sender instanceof Player) {
-                            lookupUser = ((Player) sender);
+                            lookupUser = (Player) sender;
                         }
                         if (args.length == 2 && sender.hasPermission("referrals.list.other")) {
                             lookupUser = Bukkit.getOfflinePlayer(args[1]);
@@ -86,7 +87,7 @@ public final class ReferralsSpigot extends JavaPlugin implements Referrals, List
 
                         sender.sendMessage(ChatColor.YELLOW + "Referrals");
 
-                        for (String message : getDatabaseManager().getPlayersReferred(lookupUser.getUniqueId()).entrySet().stream().map(entry -> Bukkit.getOfflinePlayer(entry.getKey()).getName() + " was referred at " + DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm:ss").format(entry.getValue().toInstant())).collect(Collectors.toList())) {
+                        for (String message : getDatabaseManager().getPlayersReferred(lookupUser.getUniqueId()).entrySet().stream().map(entry -> Bukkit.getOfflinePlayer(entry.getKey()).getName() + " was referred at " + DateTimeFormatter.ofPattern("dd-MM-yyyy hh:mm:ss a").format(entry.getValue().toLocalDateTime())).collect(Collectors.toList())) {
                             sender.sendMessage(message);
                         }
 
@@ -99,7 +100,7 @@ public final class ReferralsSpigot extends JavaPlugin implements Referrals, List
                         }
 
                         if (getDatabaseManager().hasAlreadyReferred(((Player) sender).getUniqueId())) {
-                            sender.sendMessage("You have already been referred!");
+                            sender.sendMessage(ChatColor.RED + "You have already selected who referred you, you can't do it again!");
                             return true;
                         }
 
@@ -109,7 +110,12 @@ public final class ReferralsSpigot extends JavaPlugin implements Referrals, List
                         }
 
                         if (source == null || !source.hasPlayedBefore()) {
-                            sender.sendMessage("A player must be provided!");
+                            sender.sendMessage(ChatColor.RED + args[1] + " not found. Try again.");
+                            return true;
+                        }
+
+                        if (source.getUniqueId().equals(((Player) sender).getUniqueId())) {
+                            sender.sendMessage(ChatColor.RED + "You can't refer yourself, you silly goose!");
                             return true;
                         }
 
@@ -123,10 +129,12 @@ public final class ReferralsSpigot extends JavaPlugin implements Referrals, List
                             for (String command : sourceRewards) {
                                 Bukkit.getServer().dispatchCommand(Bukkit.getConsoleSender(), command.replace("@p", source.getName()));
                             }
-                            source.getPlayer().sendMessage("You've been rewarded for referring " + source.getName());
+                            source.getPlayer().sendMessage(ChatColor.GREEN + "Thanks for referring " + sender.getName() + " to the server!");
                             rewarded = true;
                         }
 
+                        sender.sendMessage(ChatColor.GREEN + "You were referred by " + source.getName() + ". Want some awesome rewards? Get a "
+                                + "player to join and have them do " + ChatColor.YELLOW + "/refer player <playername>");
                         getDatabaseManager().addPlayerReferral(((Player) sender).getUniqueId(), source.getUniqueId(), rewarded);
                         return true;
                     }
@@ -137,7 +145,7 @@ public final class ReferralsSpigot extends JavaPlugin implements Referrals, List
                         }
 
                         if (getDatabaseManager().hasAlreadyReferred(((Player) sender).getUniqueId())) {
-                            sender.sendMessage("You have already been referred!");
+                            sender.sendMessage(ChatColor.RED + "You have already selected who referred you, you can't do it again!");
                             return true;
                         }
 
@@ -147,7 +155,7 @@ public final class ReferralsSpigot extends JavaPlugin implements Referrals, List
                         }
 
                         if (source == null) {
-                            sender.sendMessage("A source must be provided!");
+                            sender.sendMessage(ChatColor.RED + "Please type /refer website <websitename>");
                             return true;
                         }
 
@@ -155,6 +163,8 @@ public final class ReferralsSpigot extends JavaPlugin implements Referrals, List
                             Bukkit.getServer().dispatchCommand(Bukkit.getConsoleSender(), command.replace("@p", sender.getName()));
                         }
 
+                        sender.sendMessage(ChatColor.GREEN + "You were referred by " + source + ". Want some awesome rewards? Get a player to join "
+                                + "and have them do " + ChatColor.YELLOW + "/refer player <playername>");
                         getDatabaseManager().addWebsiteReferral(((Player) sender).getUniqueId(), source);
                         return true;
                     }
@@ -164,16 +174,31 @@ public final class ReferralsSpigot extends JavaPlugin implements Referrals, List
                             lookupUser = Bukkit.getOfflinePlayer(args[1]);
                         }
                         if (lookupUser == null || !lookupUser.hasPlayedBefore()) {
+                            sender.sendMessage(ChatColor.GREEN + "Deleted all referral information.");
                             getDatabaseManager().clearAll();
                         } else {
+                            sender.sendMessage(ChatColor.GREEN + "Deleted referral information for player " + lookupUser.getName() + ".");
                             getDatabaseManager().clearAll(lookupUser.getUniqueId());
                         }
 
                         return true;
                     }
+                    default: {
+                        sender.sendMessage(ChatColor.GREEN + "===" + ChatColor.YELLOW + "Refer" + ChatColor.GREEN + "===");
+                        sender.sendMessage(ChatColor.GREEN + "Help the server (and maybe others) out, and get rewarded yourself!");
+                        sender.sendMessage(ChatColor.GREEN + "How’d you get here? By player, by server list, or by website and state which.");
+                        sender.sendMessage(ChatColor.GREEN + "/refer player/website/list <playername/website/list referrals>");
+                        sender.sendMessage(ChatColor.GREEN + "If you haven't already, you can have others refer you for bringing them here.");
+                        return true;
+                    }
                 }
             } else {
-                return false;
+                sender.sendMessage(ChatColor.GREEN + "===" + ChatColor.YELLOW + "Refer" + ChatColor.GREEN + "===");
+                sender.sendMessage(ChatColor.GREEN + "Help the server (and maybe others) out, and get rewarded yourself!");
+                sender.sendMessage(ChatColor.GREEN + "How’d you get here? By player, by server list, or by website and state which.");
+                sender.sendMessage(ChatColor.GREEN + "/refer player/website/list <playername/website/list referrals>");
+                sender.sendMessage(ChatColor.GREEN + "If you haven't already, you can have others refer you for bringing them here.");
+                return true;
             }
         }
         return false;
@@ -187,7 +212,7 @@ public final class ReferralsSpigot extends JavaPlugin implements Referrals, List
             for (String command : sourceRewards) {
                 Bukkit.getServer().dispatchCommand(Bukkit.getConsoleSender(), command.replace("@p", event.getPlayer().getName()));
             }
-            event.getPlayer().sendMessage("You've been rewarded for referring " + user.getName());
+            event.getPlayer().sendMessage(ChatColor.GREEN + "Thanks for referring " + user.getName() + " to the server!");
         }
     }
 
