@@ -33,6 +33,7 @@ subprojects {
         dependencies {
             include(dependency(':referrals-common'))
             include(dependency('com.zaxxer:HikariCP:2.5.1'))
+            include(dependency('org.slf4j:slf4j-api'))
         }
     }
 
